@@ -2,6 +2,16 @@
 1) Напишіть класи серіалізації контейнерів з даними Python у json, bin файли.
 Самі класи мають відповідати загальному інтерфейсу(абстрактному базовому класу)
  SerializationInterface.
+
+        bin,    pickle,     csv,    txt,    json
+string   +       +          -*       +       -       
+dict     -       +          -        -       +*
+list     -       +          +*       -       +
+tuple    -       +          -*       -       +*  
+class    -       +          -        -       -
+instance -       +          -        -       -
+
+* Є свої особливості та обмеження (в залежності від умов)
 """
 
 from abc import abstractmethod, ABCMeta
@@ -25,8 +35,8 @@ class SerializationInterface(metaclass=ABCMeta):
             except (IOError, OSError) as errors:
                 print(f'Could not open/read file: {file}.\nError: {errors}')
 
-            except Exception as err:
-                print(f'Unexpected error opening {file} is, {repr(err)}')
+            except Exception as other_err:
+                print(f'Unexpected error opening {file} is, {repr(other_err)}')
 
         return inner
 
@@ -43,18 +53,23 @@ class SerializationInterface(metaclass=ABCMeta):
         pass
 
 
-class container_json(SerializationInterface):
+class ContainerJSON(SerializationInterface):
     """For save to a json file and read from a json file."""
     import json
 
-    def pack(self, file_name: str, data: dict):
+    def pack(self, file_name: str, data: dict or list or tuple) -> bool:
         """Packing function to json-file."""
         if isinstance(data, dict):
             with open(file_name, 'w') as fh:  # encoding='utf-8' ?
                 self.json.dump(data, fh)
         else:
-            print(
-                f'Invalid valuable data= {data}. This should be a dictionary.')
+            print(f'Invalid valuable data= {data}. '
+                  'This should be a dictionary(with strings in keys),'
+                  ' list or tuple.')
+
+            return False
+
+        return True
 
     def unpack(self, file_name: str, _):
         """Unpack function from json-file."""
@@ -64,10 +79,10 @@ class container_json(SerializationInterface):
         return unpacked
 
 
-class container_bin(SerializationInterface):
+class ContainerBIN(SerializationInterface):
     """For save to a binary file and read from a binary file."""
 
-    def pack(self, file_name: str, data: str):
+    def pack(self, file_name: str, data: str) -> bool:
         """Packing function to binary file."""
         if isinstance(data, str):
             with open(file_name, 'wb') as fh:  # encoding='utf-8' ?
@@ -75,6 +90,10 @@ class container_bin(SerializationInterface):
         else:
             print(
                 f'Invalid valuable data= {data}. This should be a string.')
+
+            return False
+
+        return True
 
     def unpack(self, file_name: str, _) -> str:
         """Unpack function from binary file."""
@@ -84,15 +103,17 @@ class container_bin(SerializationInterface):
         return unpacked
 
 
-class container_pickle(SerializationInterface):
+class ContainerPICKLE(SerializationInterface):
     """For save to a pickle-file and read from a pickle-file."""
     import pickle
 
-    # int? float? class? Any   -> Any:   ?
-    def pack(self, file_name: str, data: str or list or tuple or dict):
+    # data: str... int? float? class? Any   -> Any:   ?
+    def pack(self, file_name: str, data) -> bool:
         """Packing function to pickle-file."""
         with open(file_name, 'wb') as fh:  # encoding='utf-8' ?
             self.pickle.dump(data, fh)
+
+        return True
 
     def unpack(self, file_name: str, _):
         """Unpack function from pickle-file."""
@@ -101,11 +122,11 @@ class container_pickle(SerializationInterface):
         return unpacked
 
 
-class container_csv(SerializationInterface):
+class ContainerCSV(SerializationInterface):
     """For save to a csv-file and read from a csv-file."""
     import csv
 
-    def pack(self, file_name: str, data: list):  # list of lists
+    def pack(self, file_name: str, data: list) -> bool:  # list of lists
         """Packing function to csv-file."""
         with open(file_name, 'w') as fh:  # encoding='utf-8' ?
 
@@ -116,28 +137,36 @@ class container_csv(SerializationInterface):
                         file_writer.writerow(line)
 
                     else:
-                        print(f'Invalid valuable in data: {line}')
+                        print(
+                            f'Invalid valuable in data: {line}. This should be a list')
+
+                        return False
 
             else:
                 print(
-                    f'Invalid valuable data= {data}. This should be a list.')
+                    f'Invalid valuable data= {data}. This should be a list of list.')
+
+                return False
+
+        return True
 
     def unpack(self, file_name: str, _) -> list:
         """Unpack function from csv-file."""
         with open(file_name, newline='') as fh:  # encoding='utf-8' ?
-            unpacked = []
-            file_reader = self.csv.reader(fh)
-            for row in file_reader:
-                # unpacked.append(','.join(row))
-                unpacked.append(row.split(','))
+            # unpacked = []
+            # file_reader = self.csv.reader(fh)
+            # for row in file_reader:
+            #     if row:
+            #         unpacked.append(row)
+            unpacked = [row for row in self.csv.reader(fh) if row]
 
         return unpacked
 
 
-class container_txt(SerializationInterface):
+class ContainerTXT(SerializationInterface):
     """For save to a txt-file and read from a txt-file."""
 
-    def pack(self, file_name: str, data: str):
+    def pack(self, file_name: str, data: str) -> bool:
         """Packing function to txt-file."""
         with open(file_name, 'w', encoding='utf-8') as fh:
             if isinstance(data, str):
@@ -146,6 +175,10 @@ class container_txt(SerializationInterface):
             else:
                 print(
                     f'Invalid valuable data= {data}. This should be a str.')
+
+                return False
+
+        return True
 
     def unpack(self, file_name: str, _) -> str:
         """Unpack function from txt-file."""
@@ -158,23 +191,67 @@ class container_txt(SerializationInterface):
         return result
 
 
-expenses = {
-    "hotel": 150,
-    "breakfast": 30,
-    "taxi": 15,
-    "lunch": 20
-}
+if __name__ == '__main__':
+    # For examples, for testing:
+    expenses = {
+        "hotel": 150,
+        "breakfast": 30,
+        "taxi": 15,
+        "lunch": 20
+    }
 
-some_data = {
-    (1, 3.5): 'tuple',
-    2: [1, 2, 3],
-    'a': {'key': 'value'}
-}
+    some_data = {
+        (1, 3.5): "tuple",
+        2: [1, 2, 3],
+        "a": {"key": "value"}
+    }
 
-some_data2 = {'key': 'value', 2: [1, 2, 3],
-              'tuple': (5, 6), 'a': {'key': 'value'}}
+    some_data1 = {
+        '(1, 3.5)': "tuple",
+        2: [1, 2, 3],
+        "a": {"key": "value"}
+    }
 
+    some_data2 = ["name,number", "ALF,0000",
+                  "Beta,1111", "C,22222222222", "D,3"]
 
-class Human:
-    def __init__(self, name):
-        self.name = name
+    some_data3 = [["name", "number"], ["ALF", "0000"],
+                  ["Beta", "1111"], ["C", "22222222222"], ["D", "3"]]
+
+    class Human:
+        def __init__(self, name):
+            self.name = name
+
+    test_human = Human('ALF-0')
+    print(test_human.name)
+
+    a = [expenses,
+         some_data1,
+         some_data2,
+         some_data3,
+         Human,
+         test_human,
+         some_data, ]
+
+    a2 = [
+        ContainerBIN,
+        ContainerPICKLE,
+        ContainerCSV,
+        ContainerTXT,
+        ContainerJSON, ]
+
+    for c1, obj_1 in enumerate(a):
+        print(f'\n\n{type(obj_1)}:')
+        print(obj_1)
+        for counter, container_ in enumerate(a2):
+            print(f'\n{container_}:')
+            b = container_()
+            try:
+                if not b.pack(f'Denys-hw-web-1\\test_{c1}-{counter}.txt', obj_1):
+                    # raise TypeError()
+                    continue
+            except Exception as err:
+                print(f'_________ERROR!_{obj_1}_{container_}________:\n{err}')
+                continue
+            print(obj_1 == b.unpack(
+                f'Denys-hw-web-1\\test_{c1}-{counter}.txt', 1))
