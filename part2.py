@@ -30,3 +30,16 @@ class Cls2(metaclass=Meta):
 assert (Cls1.class_number, Cls2.class_number) == (0, 1)
 a, b = Cls1(''), Cls2('')
 assert (a.class_number, b.class_number) == (0, 1)
+
+if __name__ == "__main__":
+
+    print(Cls1.class_number, a.class_number)
+    print(Cls2.class_number, b.class_number)
+
+    class Cls3(metaclass=Meta):
+        def __init__(self, data):
+            self.data = data
+
+    print(Cls3.class_number)
+
+    print(Cls1.class_number, Cls2.class_number, Cls3.class_number)
