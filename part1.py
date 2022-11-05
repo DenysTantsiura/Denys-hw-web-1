@@ -15,39 +15,45 @@ instance -       +          -        -       -
 """
 
 from abc import abstractmethod, ABCMeta
+import csv
+import json
+import pickle
+from typing import Union
+
+
+def test_file(file_function):
+    """Decorator for checking opening file."""
+
+    def inner(file, data):
+        try:
+            result = file_function(file, data)
+
+            return result
+
+        except FileNotFoundError:
+            print(f'File {file} does not exist.')
+
+        except (IOError, OSError) as errors:
+            print(f'Could not open/read file: {file}.\nError: {errors}')
+
+        except Exception as other_err:
+            print(f'Unexpected error opening {file} is, {repr(other_err)}')
+
+    return inner
 
 
 class SerializationInterface(metaclass=ABCMeta):
     """Generic Serialization Interface (Abstract Class).
     For save to a file and read from a file."""
-    def test_file(file_function):
-        """Decorator for checking opening file."""
 
-        def inner(self, file, data):
-            try:
-                result = file_function(self, file, data)
-
-                return result
-
-            except FileNotFoundError:
-                print(f'File {file} does not exist.')
-
-            except (IOError, OSError) as errors:
-                print(f'Could not open/read file: {file}.\nError: {errors}')
-
-            except Exception as other_err:
-                print(f'Unexpected error opening {file} is, {repr(other_err)}')
-
-        return inner
-
-    @test_file  # ! ? what first? !!!
+    @test_file 
     @abstractmethod
     def pack(self, file, data):
         """Packing function."""
         pass
 
-    @test_file  # is second ! ? what first? !!!
-    @abstractmethod  # is first
+    @test_file
+    @abstractmethod
     def unpack(self, file, _):
         """Unpack function."""
         pass
@@ -55,13 +61,12 @@ class SerializationInterface(metaclass=ABCMeta):
 
 class ContainerJSON(SerializationInterface):
     """For save to a json file and read from a json file."""
-    import json
 
-    def pack(self, file_name: str, data: dict or list or tuple) -> bool:
+    def pack(self, file_name: str, data: Union[dict, list, tuple]) -> bool:
         """Packing function to json-file."""
         if isinstance(data, dict):
-            with open(file_name, 'w') as fh:  # encoding='utf-8' ?
-                self.json.dump(data, fh)
+            with open(file_name, 'w') as fh:  # encoding='utf-8'
+                json.dump(data, fh)
         else:
             print(f'Invalid valuable data= {data}. '
                   'This should be a dictionary(with strings in keys),'
@@ -73,8 +78,8 @@ class ContainerJSON(SerializationInterface):
 
     def unpack(self, file_name: str, _):
         """Unpack function from json-file."""
-        with open(file_name, 'r') as fh:  # encoding='utf-8' ?
-            unpacked = self.json.load(fh)
+        with open(file_name, 'r') as fh:  # encoding='utf-8'
+            unpacked = json.load(fh)
 
         return unpacked
 
@@ -85,7 +90,7 @@ class ContainerBIN(SerializationInterface):
     def pack(self, file_name: str, data: str) -> bool:
         """Packing function to binary file."""
         if isinstance(data, str):
-            with open(file_name, 'wb') as fh:  # encoding='utf-8' ?
+            with open(file_name, 'wb') as fh:  # encoding='utf-8'
                 fh.write(bytes(data, 'utf-8'))
         else:
             print(
@@ -97,7 +102,7 @@ class ContainerBIN(SerializationInterface):
 
     def unpack(self, file_name: str, _) -> str:
         """Unpack function from binary file."""
-        with open(file_name, 'rb') as fh:  # encoding='utf-8' ?
+        with open(file_name, 'rb') as fh:  # encoding='utf-8'
             unpacked = fh.read().decode('UTF-8')
 
         return unpacked
@@ -105,32 +110,30 @@ class ContainerBIN(SerializationInterface):
 
 class ContainerPICKLE(SerializationInterface):
     """For save to a pickle-file and read from a pickle-file."""
-    import pickle
 
     # data: str... int? float? class? Any   -> Any:   ?
     def pack(self, file_name: str, data) -> bool:
         """Packing function to pickle-file."""
-        with open(file_name, 'wb') as fh:  # encoding='utf-8' ?
-            self.pickle.dump(data, fh)
+        with open(file_name, 'wb') as fh:  # encoding='utf-8'
+            pickle.dump(data, fh)
 
         return True
 
     def unpack(self, file_name: str, _):
         """Unpack function from pickle-file."""
-        with open(file_name, 'rb') as fh:  # encoding='utf-8' ?
-            unpacked = self.pickle.load(fh)
+        with open(file_name, 'rb') as fh:  # encoding='utf-8'
+            unpacked = pickle.load(fh)
         return unpacked
 
 
 class ContainerCSV(SerializationInterface):
     """For save to a csv-file and read from a csv-file."""
-    import csv
 
-    def pack(self, file_name: str, data: list) -> bool:  # list of lists
+    def pack(self, file_name: str, data: list[list]) -> bool:
         """Packing function to csv-file."""
-        with open(file_name, 'w') as fh:  # encoding='utf-8' ?
+        with open(file_name, 'w') as fh:  # encoding='utf-8'
 
-            file_writer = self.csv.writer(fh)
+            file_writer = csv.writer(fh)
             if isinstance(data, list):
                 for line in data:
                     if isinstance(line, list):
@@ -152,13 +155,8 @@ class ContainerCSV(SerializationInterface):
 
     def unpack(self, file_name: str, _) -> list:
         """Unpack function from csv-file."""
-        with open(file_name, newline='') as fh:  # encoding='utf-8' ?
-            # unpacked = []
-            # file_reader = self.csv.reader(fh)
-            # for row in file_reader:
-            #     if row:
-            #         unpacked.append(row)
-            unpacked = [row for row in self.csv.reader(fh) if row]
+        with open(file_name, newline='') as fh:  # encoding='utf-8'
+            unpacked = [row for row in csv.reader(fh) if row]
 
         return unpacked
 
